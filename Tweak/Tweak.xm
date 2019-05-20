@@ -1,4 +1,5 @@
 #import "Tweak.h"
+#import <MediaRemote/MediaRemote.h>
 #import <notify.h>
 
 bool moveIntoPanel = false;
@@ -6,14 +7,28 @@ MSHConfig *mshConfig;
 
 %group MitsuhaVisuals
 
+%hook SBMediaController
+
+-(void)setNowPlayingInfo:(id)arg1 {
+    %orig;
+    MRMediaRemoteGetNowPlayingInfo(dispatch_get_main_queue(), ^(CFDictionaryRef information) {
+        NSDictionary *dict = (__bridge NSDictionary *)information;
+
+        if (dict && dict[(__bridge NSString *)kMRMediaRemoteNowPlayingInfoArtworkData]) {
+            [mshConfig colorizeView:[UIImage imageWithData:[dict objectForKey:(__bridge NSString*)kMRMediaRemoteNowPlayingInfoArtworkData]]];
+        }
+    });
+}
+
+%end
+
 %hook SBIconController
 
 %property (retain,nonatomic) MSHView *mshView;
 
 -(void)loadView{
     %orig;
-    CGRect bounds = [[UIScreen mainScreen] bounds];
-    mshConfig.waveOffsetOffset = bounds.size.height - 200;
+    mshConfig.waveOffsetOffset = self.view.bounds.size.height - 200;
 
     if (![mshConfig view]) [mshConfig initializeViewWithFrame:self.view.bounds];
     self.mshView = [mshConfig view];
